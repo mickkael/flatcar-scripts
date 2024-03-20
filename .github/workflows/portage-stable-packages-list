@@ -541,8 +541,6 @@ sys-fs/multipath-tools
 sys-fs/quota
 sys-fs/squashfs-tools
 sys-fs/xfsprogs
-sys-fs/zfs
-sys-fs/zfs-kmod
 
 sys-kernel/linux-headers
 
