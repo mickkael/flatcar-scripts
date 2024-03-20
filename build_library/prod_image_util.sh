@@ -44,8 +44,7 @@ extract_prod_gcc() {
     #  /usr/lib/gcc/x86_64-cros-linux-gnu/$version/*
     # Instead we extract them to plain old /usr/lib
     qtbz2 -O -t "${pkg}" | \
-        lbzcat -d -c - | \
-        sudo tar -C "${root_fs_dir}" -x \
+        sudo tar -C "${root_fs_dir}" -xj \
         --transform 's#/usr/lib/.*/#/usr/lib64/#' \
         --wildcards './usr/lib/gcc/*.so*' \
         --wildcards './usr/share/SLSA'

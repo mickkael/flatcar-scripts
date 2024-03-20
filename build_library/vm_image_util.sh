@@ -695,7 +695,7 @@ _write_cpio_common() {
 
     # Build the squashfs, embed squashfs into a gzipped cpio
     pushd "${cpio_target}" >/dev/null
-    sudo mksquashfs "${base_dir}" "./usr.squashfs" -pf "${VM_TMP_DIR}/extra" -xattrs-exclude '^btrfs.'
+    sudo mksquashfs "${base_dir}" "./usr.squashfs" -pf "${VM_TMP_DIR}/extra"
     find . | cpio -o -H newc | gzip > "$2"
     popd >/dev/null
 
