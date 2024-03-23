@@ -157,7 +157,6 @@ app-containers/docker-cli hardened
 sys-apps/policycoreutils vanilla -python
 sys-libs/libsemanage -python
 
-sys-fs/zfs minimal -rootfs
 
 # Do not pull in LLVM into production images. Also, we didn't use it
 # before anyway.

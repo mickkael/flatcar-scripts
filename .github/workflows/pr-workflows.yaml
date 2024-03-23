@@ -1,6 +1,7 @@
 name: "Run PR workflows"
 on:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   pull-requests: write
