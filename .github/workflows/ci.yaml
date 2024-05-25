@@ -137,12 +137,12 @@ jobs:
 
           # Run the packages build. This will create the ci build container
           #  which will be re-used by subsequent build steps.
-          ./run_sdk_container -n "${container_name}" -v "${version}" \
+          bash -x ./run_sdk_container -n "${container_name}" -v "${version}" \
             -C "${sdk_image}" \
             ./build_packages --board="${arch}-usr"
 
           # Create binpkgs tarball for archiving as artifact later
-          ./run_sdk_container -n "${container_name}" \
+          bash -x ./run_sdk_container -n "${container_name}" \
               tar -C "/build/${arch}-usr/var/lib/portage/pkgs/" \
                 -cvf binpkgs.tar .
 
