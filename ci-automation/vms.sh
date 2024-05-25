@@ -113,7 +113,7 @@ function _vm_build_impl() {
     local images_in="images-in/"
     local file
     rm -rf "${images_in}"
-    for file in flatcar_production_image.bin.bz2 flatcar_production_image_sysext.squashfs version.txt; do
+    for file in flatcar_production_image.bin.bz2 flatcar_production_image_sysext.squashfs flatcar_production_image.vmlinuz version.txt; do
         copy_from_buildcache "images/${arch}/${vernum}/${file}" "${images_in}"
     done
     lbunzip2 "${images_in}/flatcar_production_image.bin.bz2"
@@ -125,6 +125,9 @@ function _vm_build_impl() {
             mv "${images_in}" "${CONTAINER_IMAGE_ROOT}/${arch}-usr/latest-input"
 
     for format in ${formats}; do
+        if [ "${format}" = qemu ] || [ "${format}" = qemu_uefi_secure ]; then
+           continue
+        fi
         echo " ###################  VENDOR '${format}' ################### "
         COMPRESSION_FORMAT="bz2"
         if [[ "${format}" =~ ^(openstack_mini|digitalocean)$ ]];then
@@ -133,6 +136,10 @@ function _vm_build_impl() {
             COMPRESSION_FORMAT="gz,bz2,none"
         elif [[ "${format}" =~ ^(qemu|qemu_uefi)$ ]];then
             COMPRESSION_FORMAT="bz2,none"
+        elif [[ "${format}" =~ ^(hyperv|hyperv_vhdx)$ ]];then
+            COMPRESSION_FORMAT="zip"
+        elif [[ "${format}" =~ ^(scaleway|kubevirt)$ ]];then
+            COMPRESSION_FORMAT="none"
         fi
         ./run_sdk_container -n "${vms_container}" -C "${packages_image}" \
             -v "${vernum}" \
@@ -151,8 +158,12 @@ function _vm_build_impl() {
         mv "${CONTAINER_IMAGE_ROOT}/${arch}-usr/" "./${images_out}/"
 
     ( cd images/latest ; ln -s flatcar_production_openstack_image.img.bz2 flatcar_production_brightbox_image.img.bz2 )
+    # For the digest creation we need the vmlinuz at the same folder
+    # because the PXE vmlinuz is a symlink to it
+    mv images/latest-input/flatcar_production_image.vmlinuz images/latest/
     create_digests "${SIGNER}" "images/latest/"*
     sign_artifacts "${SIGNER}" "images/latest/"*
+    mv images/latest/flatcar_production_image.vmlinuz* images/latest-input/
     copy_to_buildcache "images/${arch}/${vernum}/" "images/latest/"*
 }
 # --

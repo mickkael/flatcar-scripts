@@ -81,6 +81,7 @@ RDEPEND="${RDEPEND}
 
 # sys-devel/gettext: it embeds 'envsubst' binary which is useful for simple file templating.
 RDEPEND="${RDEPEND}
+	app-admin/azure-nvme-utils
 	app-admin/etcd-wrapper
 	app-admin/flannel-wrapper
 	app-admin/locksmith
@@ -106,7 +107,6 @@ RDEPEND="${RDEPEND}
 	app-crypt/go-tspi
 	app-crypt/tpmpolicy
 	app-editors/vim
-	app-emulation/actool
 	app-containers/cri-tools
 	app-misc/ca-certificates
 	app-misc/jq
@@ -178,6 +178,7 @@ RDEPEND="${RDEPEND}
 	sys-apps/usbutils
 	sys-apps/util-linux
 	sys-apps/which
+	sys-apps/zram-generator
 	sys-auth/realmd
 	sys-auth/sssd
 	sys-block/open-iscsi

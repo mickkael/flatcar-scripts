@@ -15,16 +15,17 @@ VALID_IMG_TYPES=(
     digitalocean
     exoscale
     gce
+    hetzner
     hyperv
+    hyperv_vhdx
     iso
+    kubevirt
     openstack
     openstack_mini
     packet
     parallels
     pxe
-    qemu
     qemu_uefi
-    qemu_uefi_secure
     rackspace
     rackspace_onmetal
     rackspace_vhd
@@ -49,7 +50,9 @@ VALID_OEM_PACKAGES=(
     digitalocean
     exoscale
     gce
+    hetzner
     hyperv
+    kubevirt
     openstack
     packet
     qemu
@@ -109,6 +112,9 @@ IMG_DEFAULT_FS_HOOK=
 # May be raw, qcow2 (qemu), or vmdk (vmware, virtualbox)
 IMG_DEFAULT_DISK_FORMAT=raw
 
+# Extension to set before the compression extension.
+IMG_DEFAULT_DISK_EXTENSION=
+
 # Name of the partition layout from disk_layout.json
 IMG_DEFAULT_DISK_LAYOUT=base
 
@@ -119,32 +125,18 @@ IMG_DEFAULT_CONF_FORMAT=
 IMG_DEFAULT_BUNDLE_FORMAT=
 
 # Memory size to use in any config files
-IMG_DEFAULT_MEM=1024
+IMG_DEFAULT_MEM=2048
 
 # Number of CPUs to use in any config files
 IMG_DEFAULT_CPUS=2
 
 ## qemu
-IMG_qemu_DISK_FORMAT=qcow2
-IMG_qemu_DISK_LAYOUT=vm
-IMG_qemu_CONF_FORMAT=qemu
-IMG_qemu_OEM_USE=qemu
-IMG_qemu_OEM_PACKAGE=common-oem-files
-IMG_qemu_OEM_SYSEXT=oem-qemu
-
 IMG_qemu_uefi_DISK_FORMAT=qcow2
 IMG_qemu_uefi_DISK_LAYOUT=vm
 IMG_qemu_uefi_CONF_FORMAT=qemu_uefi
 IMG_qemu_uefi_OEM_USE=qemu
 IMG_qemu_uefi_OEM_PACKAGE=common-oem-files
 IMG_qemu_uefi_OEM_SYSEXT=oem-qemu
-
-IMG_qemu_uefi_secure_DISK_FORMAT=qcow2
-IMG_qemu_uefi_secure_DISK_LAYOUT=vm
-IMG_qemu_uefi_secure_CONF_FORMAT=qemu_uefi_secure
-IMG_qemu_uefi_secure_OEM_USE=qemu
-IMG_qemu_uefi_secure_OEM_PACKAGE=common-oem-files
-IMG_qemu_uefi_secure_OEM_SYSEXT=oem-qemu
 
 ## xen
 IMG_xen_CONF_FORMAT=xl
@@ -293,9 +285,20 @@ IMG_azure_OEM_USE=azure
 IMG_azure_OEM_PACKAGE=common-oem-files
 IMG_azure_OEM_SYSEXT=oem-azure
 
+## hetzner
+IMG_hetzner_DISK_LAYOUT=vm
+IMG_hetzner_OEM_USE=hetzner
+IMG_hetzner_OEM_PACKAGE=common-oem-files
+IMG_hetzner_OEM_SYSEXT=oem-hetzner
+
 ## hyper-v
 IMG_hyperv_DISK_FORMAT=vhd
 IMG_hyperv_OEM_PACKAGE=oem-hyperv
+
+## hyper-v vhdx
+IMG_hyperv_vhdx_DISK_FORMAT=vhdx
+IMG_hyperv_vhdx_OEM_PACKAGE=oem-hyperv
+
 
 ## cloudsigma
 IMG_cloudsigma_DISK_FORMAT=qcow2
@@ -312,6 +315,15 @@ IMG_scaleway_DISK_LAYOUT=vm
 IMG_scaleway_OEM_PACKAGE=common-oem-files
 IMG_scaleway_OEM_USE=scaleway
 IMG_scaleway_OEM_SYSEXT=oem-scaleway
+IMG_scaleway_DISK_EXTENSION=qcow2
+
+## kubevirt
+IMG_kubevirt_DISK_FORMAT=qcow2
+IMG_kubevirt_DISK_LAYOUT=vm
+IMG_kubevirt_OEM_PACKAGE=common-oem-files
+IMG_kubevirt_OEM_USE=kubevirt
+IMG_kubevirt_OEM_SYSEXT=oem-kubevirt
+IMG_kubevirt_DISK_EXTENSION=qcow2
 
 ###########################################################
 
@@ -320,7 +332,7 @@ get_default_vm_type() {
     local board="$1"
     case "$board" in
     amd64-usr)
-        echo "qemu"
+        echo "qemu_uefi"
         ;;
     arm64-usr)
         echo "qemu_uefi"
@@ -423,6 +435,11 @@ _dst_path() {
 # Get the proper disk format extension.
 _disk_ext() {
     local disk_format=$(_get_vm_opt DISK_FORMAT)
+    local disk_extension=$(_get_vm_opt DISK_EXTENSION)
+    if [[ -n ${disk_extension} ]]; then
+	echo "${disk_extension}"
+	return 0
+    fi
     case ${disk_format} in
         raw) echo bin;;
         qcow2) echo img;;
@@ -431,7 +448,9 @@ _disk_ext() {
         vmdk_scsi) echo vmdk;;
         vmdk_stream) echo vmdk;;
         hdd) echo hdd;;
-        vhd*) echo vhd;;
+        vhd) echo vhd;;
+        vhd_fixed) echo vhd;;
+        vhdx) echo vhdx;;
         *) echo "${disk_format}";;
     esac
 }
@@ -505,36 +524,6 @@ install_oem_package() {
         --verbose --jobs=2 "${oem_pkg}"
     sudo rsync -a "${oem_tmp}/oem/" "${VM_TMP_ROOT}/oem/"
     sudo rm -rf "${oem_tmp}"
-}
-
-# Write the OEM ACI file into the OEM partition.
-install_oem_aci() {
-    local oem_aci=$(_get_vm_opt OEM_ACI)
-    local aci_dir="${FLAGS_to}/oem-${oem_aci}-aci"
-    local aci_path="${aci_dir}/flatcar-oem-${oem_aci}.aci"
-    local binpkgflags=(--nogetbinpkg)
-
-    [ -n "${oem_aci}" ] || return 0
-
-    [ "${FLAGS_getbinpkg}" = "${FLAGS_TRUE}" ] &&
-    binpkgflags=(--getbinpkg --getbinpkgver="${FLAGS_getbinpkgver}")
-
-    # Build an OEM ACI if necessary, supplying build environment flags.
-    [ -e "${aci_path}" ] &&
-    info "ACI ${aci_path} exists; reusing it" ||
-    "${SCRIPT_ROOT}/build_oem_aci" \
-        --board="${BOARD}" \
-        --build_dir="${aci_dir}" \
-        "${binpkgflags[@]}" \
-        "${oem_aci}"
-
-    info "Installing ${oem_aci} OEM ACI"
-    sudo install -Dpm 0644 \
-        "${aci_path}" \
-        "${VM_TMP_ROOT}/oem/flatcar-oem-${oem_aci}.aci" ||
-    die "Could not install ${oem_aci} OEM ACI"
-    # Remove aci_dir if building ACI and installing it succeeded
-    rm -rf "${aci_dir}"
 }
 
 # Write the OEM sysext file into the OEM partition.
@@ -625,6 +614,21 @@ write_vm_disk() {
     info "Writing $disk_format image $(basename "${VM_DST_IMG}")"
     _write_${disk_format}_disk "${VM_TMP_IMG}" "${VM_DST_IMG}"
 
+    # We now only support building qemu_uefi and set up symlinks
+    # for the qemu and qemu_uefi_secure images
+    if [ "${VM_IMG_TYPE}" = qemu_uefi ]; then
+        local qemu="${VM_DST_IMG/qemu_uefi/qemu}"
+        local qemu_uefi_secure="${VM_DST_IMG/qemu_uefi/qemu_uefi_secure}"
+        local target_basename
+        target_basename=$(basename "${VM_DST_IMG}")
+        if [ "${BOARD}" = amd64-usr ]; then
+          ln -fs "${target_basename}" "${qemu}"
+          VM_GENERATED_FILES+=( "${qemu}" )
+        fi
+        ln -fs "${target_basename}" "${qemu_uefi_secure}"
+        VM_GENERATED_FILES+=( "${qemu_uefi_secure}" )
+    fi
+
     # Add disk image to final file list if it isn't going to be bundled
     if [[ -z "$(_get_vm_opt BUNDLE_FORMAT)" ]]; then
         VM_GENERATED_FILES+=( "${VM_DST_IMG}" )
@@ -648,6 +652,11 @@ _write_vhd_disk() {
 _write_vhd_fixed_disk() {
     qemu-img convert -f raw "$1" -O vpc -o subformat=fixed,force_size "$2"
     assert_image_size "$2" vpc
+}
+
+_write_vhdx_disk() {
+    qemu-img convert -f raw "$1" -O vhdx -o subformat=dynamic "$2"
+    assert_image_size "$2" vhdx
 }
 
 _write_vmdk_ide_disk() {
@@ -710,7 +719,7 @@ _write_cpio_disk() {
     local grub_name="$(_dst_name "_grub.efi")"
     _write_cpio_common $@
     # Pull the kernel and loader out of the filesystem
-    cp "${base_dir}"/boot/flatcar/vmlinuz-a "${dst_dir}/${vmlinuz_name}"
+    ln -fs flatcar_production_image.vmlinuz "${dst_dir}/${vmlinuz_name}"
 
     local grub_arch
     case $BOARD in
@@ -826,6 +835,19 @@ _write_qemu_uefi_conf() {
     sed -e "s%^VM_PFLASH_RO=.*%VM_PFLASH_RO='${flash_ro}'%" \
         -e "s%^VM_PFLASH_RW=.*%VM_PFLASH_RW='${flash_rw}'%" -i "${script}"
     VM_GENERATED_FILES+=( "$(_dst_dir)/${flash_ro}" "$(_dst_dir)/${flash_rw}" )
+
+    # We now only support building qemu_uefi and generate the
+    # other artifacts from here
+    if [ "${VM_IMG_TYPE}" = qemu_uefi ]; then
+      local qemu="${VM_DST_IMG/qemu_uefi/qemu}"
+      local qemu_uefi_secure="${VM_DST_IMG/qemu_uefi/qemu_uefi_secure}"
+      local qemu_name="${VM_NAME/qemu_uefi/qemu}"
+      local qemu_uefi_secure_name="${VM_NAME/qemu_uefi/qemu_uefi_secure}"
+      if [ "${BOARD}" = amd64-usr ]; then
+        VM_IMG_TYPE=qemu VM_DST_IMG="${qemu}" VM_NAME="${qemu_name}" _write_qemu_conf
+      fi
+      VM_IMG_TYPE=qemu_uefi_secure VM_DST_IMG="${qemu_uefi_secure}" VM_NAME="${qemu_uefi_secure_name}" _write_qemu_uefi_secure_conf
+    fi
 }
 
 _write_qemu_uefi_secure_conf() {
