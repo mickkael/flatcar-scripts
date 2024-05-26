@@ -190,7 +190,7 @@ function docker_image_from_buildcache() {
     local tgz="${name}-${version}.tar.${compr}"
     local id_file="${name}-${version}.id"
     local id_file_url="https://${BUILDCACHE_SERVER}/containers/${version}/${id_file}"
-    local id_file_url_release="https://mirror.release.flatcar-linux.net/containers/${version}/${id_file}"
+    local id_file_url_release="https://bincache.flatcar-linux.net/containers/${version}/${id_file}"
 
     local local_image=""
     if image_exists_locally "${name}" "${version}" ; then
@@ -219,7 +219,7 @@ function docker_image_from_buildcache() {
 
     # First try bincache then release to allow a bincache overwrite
     local url="https://${BUILDCACHE_SERVER}/containers/${version}/${tgz}"
-    local url_release="https://mirror.release.flatcar-linux.net/containers/${version}/${tgz}"
+    local url_release="https://bincache.flatcar-linux.net/containers/${version}/${tgz}"
 
     curl --fail --silent --show-error --location --retry-delay 1 --retry 60 \
         --retry-connrefused --retry-max-time 60 --connect-timeout 20 \
