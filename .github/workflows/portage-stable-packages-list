@@ -551,8 +551,9 @@ sys-fs/quota
 sys-fs/squashfs-tools
 sys-fs/udisks
 sys-fs/xfsprogs
-sys-fs/zfs
-sys-fs/zfs-kmod
+# not compatible with kernel 6.8 yet
+# sys-fs/zfs
+# sys-fs/zfs-kmod
 app-containers/podman
 net-misc/passt
 
