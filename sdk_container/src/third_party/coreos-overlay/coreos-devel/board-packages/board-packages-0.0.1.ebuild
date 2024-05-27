@@ -37,4 +37,5 @@ RDEPEND="
 	net-misc/chrony
     app-containers/podman
 	net-misc/passt
+	sys-fs/zfs
 	"
