@@ -35,7 +35,7 @@ RDEPEND="
 	coreos-base/coreos-dev
 	coreos-base/flatcar-eks
 	net-misc/chrony
-    app-containers/podman
+	app-containers/podman
 	net-misc/passt
 	sys-fs/zfs
 	"
